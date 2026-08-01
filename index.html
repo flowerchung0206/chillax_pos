@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>蕎淶清飲 智能 POS </title>
+  <title>蕎淶清飲 智能 POS</title>
   <!-- 引入 SheetJS 用於匯出真正的 .xlsx 檔案 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -36,14 +36,14 @@
   <!-- 左側：點餐區 -->
   <div class="panel" id="menuPanel">
     <div>
-      <h1 id="brandTitle">🍃 蕎淶清飲 POS</h1>
+      <h1 id="brandTitle" onclick="checkUnlock()">🍃 蕎淶清飲 POS</h1>
       <span style="font-size: 0.75rem; color: #64748b;">(連續點擊標題 5 下解鎖價格修改)</span>
     </div>
     
-    <h2>🍕 比薩 </h2>
+    <h2>🍕 比薩</h2>
     <div class="menu-grid" id="pizzaMenu"></div>
     
-    <h2>🥤 飲料 </h2>
+    <h2>🥤 飲料</h2>
     <div class="menu-grid" id="drinkMenu"></div>
     
     <h2>🍰 甜點</h2>
@@ -60,7 +60,7 @@
     <div class="checkout-zone">
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;">
         <button class="btn" style="background: #e17055; color: white; padding: 6px 12px; font-size: 0.9rem;" onclick="applyComboDiscount()">🏷️ 組合價 (-$10)</button>
-        <span style="font-size: 0.85srem; color: #d63031;" id="comboHint"></span>
+        <span style="font-size: 0.85rem; color: #d63031;" id="comboHint"></span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span>總計金額:</span>
@@ -68,293 +68,324 @@
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;">
         <span>客收現金:</span>
-        <input type="number" id="cashGiven" placeholder="輸入現金">
+        <div style="display: flex; gap: 5px; align-items: center;">
+          <input type="number" id="cashGiven" placeholder="輸入現金" oninput="calcChange()">
+          <button class="btn" style="background: #27ae60; color: white; padding: 8px 10px; font-size: 0.85rem;" onclick="setExactCash()">⚡ 不找零</button>
+        </div>
       </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-        <span>應找零錢:</span>
-        <span id="changeAmount" style="font-size: 1.3rem; font-weight: bold; color: #10b981;">$0</span>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: bold;">
+        <span>找零:</span>
+        <span id="changeAmount" style="color: #27ae60; font-size: 1.2rem;">$0</span>
       </div>
-      <button class="btn" style="background: #10b981; color: white; width: 100%; font-size: 1.1rem; padding: 10px;" onclick="checkout()">確認結帳並記錄</button>
+      <button class="btn" style="background: #2980b9; color: white; width: 100%; padding: 12px; font-size: 1.1rem;" onclick="checkout()">確認結帳並送單</button>
     </div>
   </div>
 
-  <!-- 右側：出單與匯出區 -->
+  <!-- 右側：訂單列隊與營運匯出區 -->
   <div class="panel">
     <div class="export-bar">
       <div>
-        <strong>📊 營業資料匯出</strong><br>
-        <span style="font-size: 0.75rem; color: #1e40af;" id="recordCount">今日已完成 0 筆訂單</span>
+        <div style="font-weight: bold; color: #1e40af; font-size: 0.95rem;">📊 營運統計與匯出</div>
+        <div style="font-size: 0.8rem; color: #64748b;" id="dailyStatsHint">今日營業額: $0 | 總單數: 0 單</div>
       </div>
-      <button class="btn" style="background: #2563eb; color: white; padding: 8px 12px;" onclick="exportToExcel()">📥 匯出 Excel 表格</button>
+      <button class="btn" style="background: #2563eb; color: white; padding: 6px 10px; font-size: 0.85rem;" onclick="exportExcel()">匯出 Excel</button>
     </div>
 
-    <h2>📋 出單檢視與完成狀態</h2>
-    <div style="flex: 1; overflow-y: auto;" id="orderQueue">
-      <p style="color: #94a3b8; text-align: center; margin-top: 40px;">尚無待出單紀錄</p>
+    <h2>📋 即時訂單列隊</h2>
+    <div style="flex: 1; overflow-y: auto;" id="queueList">
+      <p style="color: #94a3b8; text-align: center; margin-top: 40px;">目前尚無訂單</p>
     </div>
   </div>
 
-<script>
-  // 商品資料庫
-  let products = [
-    { id: 'p1', name: '海鮮比薩', price: 80, type: 'pizza' },
-    { id: 'p2', name: '燻雞比薩', price: 80, type: 'pizza' },
-    { id: 'p3', name: '總匯比薩', price: 80, type: 'pizza' },
-    { id: 'p4', name: '夏威夷比薩', price: 80, type: 'pizza' },
-    { id: 'd1', name: '厚奶茶', price: 65, type: 'drink' },
-    { id: 'd2', name: '決明子紅萱', price: 60, type: 'drink' },
-    { id: 'd3', name: '薰衣草奶茶', price: 75, type: 'drink' },
-    { id: 'd4', name: '四季春茶', price: 60, type: 'drink' },
-    { id: 'd5', name: '冬瓜茶', price: 60, type: 'drink' },
-    { id: 'd6', name: '冬瓜檸檬', price: 70, type: 'drink' },
-    { id: 's1', name: '杏仁瓦片', price: 180, type: 'snack' },
-    { id: 's2', name: '法式千層蛋糕', price: 120, type: 'snack' }
-  ];
+  <script>
+    // 更新後的菜單資料
+    const menuData = {
+      pizza: [
+        { name: "海鮮比薩", price: 80, type: "pizza" },
+        { name: "燻雞比薩", price: 80, type: "pizza" },
+        { name: "總匯比薩", price: 80, type: "pizza" },
+        { name: "夏威夷比薩", price: 80, type: "pizza" }
+      ],
+      drink: [
+        { name: "厚奶茶", price: 65, type: "drink" },
+        { name: "決明子紅萱", price: 60, type: "drink" },
+        { name: "薰衣草奶茶", price: 75, type: "drink" },
+        { name: "四季春茶", price: 60, type: "drink" },
+        { name: "冬瓜茶", price: 60, type: "drink" },
+        { name: "冬瓜檸檬", price: 70, type: "drink" }
+      ],
+      snack: [
+        { name: "杏仁瓦片", price: 180, type: "snack" },
+        { name: "法式千層蛋糕", price: 120, type: "snack" }
+      ]
+    };
 
-  let cart = [];
-  let orderQueueData = []; // 儲存所有歷史訂單用於匯出 Excel
-  let orderCount = 0;
-  
-  // 隱藏版功能：連續點擊標題 5 次解鎖改價
-  let clickCount = 0;
-  document.getElementById('brandTitle').addEventListener('click', () => {
-    clickCount++;
-    if(clickCount >= 5) {
-      document.getElementById('menuPanel').classList.toggle('edit-mode');
-      alert('🔓 隱藏模式已解鎖：您可以直接修改各品項價格！');
-      clickCount = 0;
-    }
-  });
+    let cart = {}; 
+    let orderHistory = []; 
+    let unlockCount = 0;
+    let isEditMode = false;
+    let hasCombo = false;
 
-  // 渲染前端選單
-  function renderMenu() {
-    ['pizza', 'drink', 'snack'].forEach(type => {
-      let container = document.getElementById(type + 'Menu');
-      container.innerHTML = '';
-      products.filter(p => p.type === type).forEach(p => {
-        let btnType = type === 'pizza' ? 'btn-pizza' : type === 'drink' ? 'btn-drink' : 'btn-snack';
-        container.innerHTML += `
-          <div class="menu-item-wrap">
-            <button class="btn ${btnType}" onclick="addToCart('${p.id}')">
-              ${p.name} $<span class="price-text">${p.price}</span>
+    function renderMenu() {
+      for (let category in menuData) {
+        const container = document.getElementById(category + "Menu");
+        container.innerHTML = "";
+        menuData[category].forEach(item => {
+          const wrap = document.createElement("div");
+          wrap.className = "menu-item-wrap";
+          wrap.innerHTML = `
+            <button class="btn btn-${category}" onclick="addToCart('${item.name}', ${item.price}, '${item.type}')">
+              ${item.name} <span class="price-text">$${item.price}</span>
             </button>
-            <input type="number" class="price-input" value="${p.price}" onchange="updatePrice('${p.id}', this.value)" title="修改價格">
+            <input type="number" class="price-input" value="${item.price}" id="price_${item.name}" onchange="updatePrice('${item.name}', '${category}', this.value)">
+          `;
+          container.appendChild(wrap);
+        });
+      }
+    }
+
+    function checkUnlock() {
+      unlockCount++;
+      if (unlockCount >= 5) {
+        isEditMode = !isEditMode;
+        document.getElementById("menuPanel").classList.toggle("edit-mode", isEditMode);
+        alert(isEditMode ? "已解鎖價格修改模式！可以直接在品項旁修改價格" : "已鎖定價格修改模式。");
+        unlockCount = 0;
+      }
+    }
+
+    function updatePrice(itemName, category, newPrice) {
+      const p = parseInt(newPrice);
+      if (isNaN(p) || p < 0) return;
+      const target = menuData[category].find(i => i.name === itemName);
+      if (target) {
+        target.price = p;
+        renderMenu();
+        if (isEditMode) {
+          document.getElementById("menuPanel").classList.add("edit-mode");
+        }
+      }
+    }
+
+    function addToCart(name, price, type) {
+      if (cart[name]) {
+        cart[name].qty += 1;
+      } else {
+        cart[name] = { price: price, qty: 1, type: type };
+      }
+      renderCart();
+    }
+
+    function changeQty(name, delta) {
+      if (cart[name]) {
+        cart[name].qty += delta;
+        if (cart[name].qty <= 0) {
+          delete cart[name];
+        }
+      }
+      renderCart();
+    }
+
+    function applyComboDiscount() {
+      hasCombo = !hasCombo;
+      document.getElementById("comboHint").innerText = hasCombo ? "已套用組合折扣 (-$10)" : "";
+      renderCart();
+    }
+
+    function calculateTotal() {
+      let total = 0;
+      for (let name in cart) {
+        total += cart[name].price * cart[name].qty;
+      }
+      if (hasCombo && total >= 10) {
+        total -= 10;
+      }
+      return total;
+    }
+
+    function renderCart() {
+      const container = document.getElementById("cartList");
+      container.innerHTML = "";
+
+      const keys = Object.keys(cart);
+      if (keys.length === 0) {
+        container.innerHTML = `<p style="color: #94a3b8; text-align: center; margin-top: 40px;">尚未選擇商品</p>`;
+        document.getElementById("totalAmount").innerText = "0";
+        document.getElementById("changeAmount").innerText = "$0";
+        return;
+      }
+
+      keys.forEach(name => {
+        const item = cart[name];
+        const div = document.createElement("div");
+        div.className = "cart-item";
+        div.innerHTML = `
+          <div style="flex: 1;">
+            <div style="font-weight: bold;">${name}</div>
+            <div style="font-size: 0.85rem; color: #64748b;">$${item.price} × ${item.qty} = $${item.price * item.qty}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <button class="btn" style="padding: 2px 8px; background: #e2e8f0;" onclick="changeQty('${name}', -1)">-</button>
+            <span style="font-weight: bold; width: 20px; text-align: center;">${item.qty}</span>
+            <button class="btn" style="padding: 2px 8px; background: #e2e8f0;" onclick="changeQty('${name}', 1)">+</button>
           </div>
         `;
+        container.appendChild(div);
       });
-    });
-  }
 
-  function updatePrice(id, newPrice) {
-    let p = products.find(x => x.id === id);
-    if(p) p.price = parseInt(newPrice) || p.price;
-  
-  let comboApplied = false;
-
-  function applyComboDiscount() {
-    let hasPizza = cart.some(item => item.type === 'pizza');
-    let hasDrink = cart.some(item => item.type === 'drink');
-    
-    if (!hasPizza || !hasDrink) {
-      alert('⚠️ 組合價條件：購物車內必須同時包含「任一比薩」與「任一飲料」才能折價10元喔！');
-      return;
-    }
-    
-    if (comboApplied) {
-      alert('💡 已經套用過組合價優惠囉！');
-      return;
+      const total = calculateTotal();
+      document.getElementById("totalAmount").innerText = total;
+      calcChange();
     }
 
-    comboApplied = true;
-    document.getElementById('comboHint').innerText = '已折 $10 (比薩+飲料)';
-    updateCart();
-  }
-
-  renderMenu();
-    updateCart();
-  }
-
-  function addToCart(id) {
-    let p = Object.assign({}, products.find(x => x.id === id));
-    cart.push(p);
-    updateCart();
-  }
-
-  function updateCart() {
-    let cartListEl = document.getElementById('cartList');
-    if(cart.length === 0) {
-      cartListEl.innerHTML = '<p style="color: #94a3b8; text-align: center; margin-top: 40px;">尚未選擇商品</p>';
-      document.getElementById('totalAmount').innerText = '0';
-      calculateChange();
-      return;
+    function calcChange() {
+      const total = calculateTotal();
+      const cash = parseFloat(document.getElementById("cashGiven").value) || 0;
+      const change = cash - total;
+      const changeElem = document.getElementById("changeAmount");
+      if (change >= 0) {
+        changeElem.innerText = `$${change}`;
+        changeElem.style.color = "#27ae60";
+      } else {
+        changeElem.innerText = `現金不足 ($${change})`;
+        changeElem.style.color = "#e74c3c";
+      }
     }
 
-    let cartHTML = '';
-    let total = 0;
-    cart.forEach((item, index) => {
-      total += item.price;
-      cartHTML += `<div class="cart-item">
-        <span>${item.name}</span>
-        <span>$${item.price} <button style="border:none; background:none; cursor:pointer; color:#ef4444; font-weight:bold;" onclick="removeFromCart(${index})">✕</button></span>
-      </div>`;
-    });
-    
-    // 檢查是否符合組合價條件，若品項被刪到不符合則自動取消優惠
-    let hasPizza = cart.some(item => item.type === 'pizza');
-    let hasDrink = cart.some(item => item.type === 'drink');
-    if (!hasPizza || !hasDrink) {
-      comboApplied = false;
-      document.getElementById('comboHint').innerText = '';
+    function setExactCash() {
+      const total = calculateTotal();
+      document.getElementById("cashGiven").value = total;
+      calcChange();
     }
 
-    if (comboApplied) {
-      total -= 10;
-      cartHTML += `<div class="cart-item" style="color: #e74c3c; font-weight: bold;">
-        <span>🏷️ 比薩飲料組合價折扣</span>
-        <span>-$10</span>
-      </div>`;
+    function checkout() {
+      const keys = Object.keys(cart);
+      if (keys.length === 0) {
+        alert("購物車是空的！");
+        return;
+      }
+      const total = calculateTotal();
+      const cash = parseFloat(document.getElementById("cashGiven").value) || 0;
+      if (cash < total) {
+        alert("收到的現金不足以支付總金額！");
+        return;
+      }
+
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      
+      const order = {
+        id: orderHistory.length + 1,
+        time: timeStr,
+        items: JSON.parse(JSON.stringify(cart)),
+        total: total,
+        status: "processing"
+      };
+
+      orderHistory.push(order);
+      
+      cart = {};
+      hasCombo = false;
+      document.getElementById("comboHint").innerText = "";
+      document.getElementById("cashGiven").value = "";
+      
+      renderCart();
+      renderQueue();
+      updateDailyStatsHint();
     }
 
-    cartListEl.innerHTML = cartHTML;
-    document.getElementById('totalAmount').innerText = total;
-    calculateChange();
-  }
+    function renderQueue() {
+      const container = document.getElementById("queueList");
+      if (orderHistory.length === 0) {
+        container.innerHTML = `<p style="color: #94a3b8; text-align: center; margin-top: 40px;">目前尚無訂單</p>`;
+        return;
+      }
 
-  function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCart();
-  }
+      container.innerHTML = "";
+      [...orderHistory].reverse().forEach(order => {
+        const div = document.createElement("div");
+        div.className = `queue-item ${order.status === 'done' ? 'queue-done' : ''}`;
+        
+        let itemsDesc = Object.entries(order.items).map(([name, info]) => `${name}x${info.qty}`).join(', ');
 
-  document.getElementById('cashGiven').addEventListener('input', calculateChange);
-  function calculateChange() {
-    let total = parseInt(document.getElementById('totalAmount').innerText) || 0;
-    let cash = parseInt(document.getElementById('cashGiven').value) || 0;
-    let change = cash - total;
-    let changeEl = document.getElementById('changeAmount');
-    if(cash > 0 && change >= 0) {
-        changeEl.innerText = '$' + change;
-        changeEl.style.color = '#10b981';
-    } else {
-        changeEl.innerText = '$0';
-        changeEl.style.color = '#ef4444';
-    }
-  }
-
-  function checkout() {
-    if(cart.length === 0) return alert('⚠️ 購物車是空的喔！');
-    let total = parseInt(document.getElementById('totalAmount').innerText) || 0;
-    let cash = parseInt(document.getElementById('cashGiven').value) || 0;
-    if(cash < total) return alert('⚠️ 客人給的豐厚現金不夠付帳喔！');
-
-    orderCount++;
-    let orderNum = String(orderCount).padStart(3, '0');
-    let orderTimeStr = new Date().toLocaleString('zh-TW');
-    let orderSummary = cart.map(item => `${item.name}($${item.price})`).join(', ');
-    let totalQty = cart.length;
-
-    // 記錄至歷史資料陣列供 Excel 匯出用
-    let recordItem = {
-      orderNum: `訂單 #${orderNum}`,
-      orderTime: orderTimeStr,
-      items: orderSummary,
-      totalQty: totalQty,
-      totalPrice: total,
-      status: '待出單'
-    };
-    orderQueueData.push(recordItem);
-
-    // 渲染出單畫面
-    let queueContainer = document.getElementById('orderQueue');
-    if(orderQueueData.length === 1) queueContainer.innerHTML = ''; // 清除提示文字
-    
-    let queueHTML = `
-      <div class="queue-item" id="order-${orderNum}">
-        <div>
-          <strong>訂單 #${orderNum}</strong> <span style="font-size:0.8rem; color:#64748b;">(${orderTimeStr})</span><br>
-          <span style="font-size: 0.9rem; color:#334155;">${orderSummary}</span> <br>
-          <span style="color:#e74c3c; font-weight:bold;">總計: $${total} (共 ${totalQty} 件)</span>
-        </div>
-        <div style="margin-top: 6px; text-align: right;">
-          <label style="font-size: 0.9rem; cursor:pointer;"><input type="checkbox" onchange="markDone('${orderNum}', this, ${orderQueueData.length - 1})" style="transform: scale(1.1); margin-right: 4px;"> 已出單完成</label>
-        </div>
-      </div>
-    `;
-    queueContainer.innerHTML = queueHTML + queueContainer.innerHTML;
-
-    // 更新計數
-    document.getElementById('recordCount').innerText = `今日已完成 ${orderQueueData.length} 筆訂單`;
-
-    // 清空重置
-    cart = [];
-    comboApplied = false;
-    document.getElementById('comboHint').innerText = '';
-    updateCart();
-    document.getElementById('cashGiven').value = '';
-    document.getElementById('changeAmount').innerText = '$0';
-  }
-
-  function markDone(orderNum, checkbox, dataIndex) {
-    let el = document.getElementById('order-' + orderNum);
-    if(checkbox.checked) {
-      el.classList.add('queue-done');
-      orderQueueData[dataIndex].status = '已出單';
-    } else {
-      el.classList.remove('queue-done');
-      orderQueueData[dataIndex].status = '待出單';
-    }
-  }
-
-  // 手動匯出 Excel 核心函式
-  function exportToExcel() {
-    if(orderQueueData.length === 0) {
-      return alert('⚠️ 目前沒有任何訂單數據可以匯出喔！');
+        div.innerHTML = `
+          <div>
+            <div style="font-weight: bold; font-size: 0.9rem;">#${order.id} 訂單 (${order.time})</div>
+            <div style="font-size: 0.85rem; color: #475569;">${itemsDesc}</div>
+            <div style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">總計: $${order.total}</div>
+          </div>
+          <div>
+            <button class="btn" style="background: ${order.status === 'done' ? '#94a3b8' : '#10b981'}; color: white; padding: 4px 8px; font-size: 0.8rem;" onclick="toggleOrderStatus(${order.id})">
+              ${order.status === 'done' ? '已完成' : '完成'}
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
     }
 
-    // 整理成 SheetJS 格式
-    let exportRows = orderQueueData.map(o => ({
-      '訂單編號': o.orderNum,
-      '點單時間': o.orderTime,
-      '品項內容': o.items,
-      '商品總數量': o.totalQty,
-      '總金額 (元)': o.totalPrice,
-      '出單狀態': o.status
-    }));
-
-    let worksheet = XLSX.utils.json_to_sheet(exportRows);
-    let workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "營業收入與數量統計");
-
-    // 設定檔名包含當天日期
-    let todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
-    let fileName = `蕎淶清飲_營業統計_${todayStr}.xlsx`;
-
-    // 下載檔案
-    XLSX.writeFile(workbook, fileName);
-  }
-
-
-  let comboApplied = false;
-
-  function applyComboDiscount() {
-    let hasPizza = cart.some(item => item.type === 'pizza');
-    let hasDrink = cart.some(item => item.type === 'drink');
-    
-    if (!hasPizza || !hasDrink) {
-      alert('⚠️ 組合價條件：購物車內必須同時包含「任一比薩」與「任一飲料」才能折價10元喔！');
-      return;
-    }
-    
-    if (comboApplied) {
-      alert('💡 已經套用過組合價優惠囉！');
-      return;
+    function toggleOrderStatus(id) {
+      const target = orderHistory.find(o => o.id === id);
+      if (target) {
+        target.status = target.status === 'done' ? 'processing' : 'done';
+        renderQueue();
+      }
     }
 
-    comboApplied = true;
-    document.getElementById('comboHint').innerText = '已折 $10 (比薩+飲料)';
-    updateCart();
-  }
+    function updateDailyStatsHint() {
+      const totalRevenue = orderHistory.reduce((acc, cur) => acc + cur.total, 0);
+      const totalOrders = orderHistory.length;
+      document.getElementById("dailyStatsHint").innerText = `今日營業額: $${totalRevenue} | 總單數: ${totalOrders} 單`;
+    }
 
-  renderMenu();
-</script>
+    function exportExcel() {
+      if (orderHistory.length === 0) {
+        alert("目前尚無成交訂單可以匯出！");
+        return;
+      }
+
+      const totalRevenue = orderHistory.reduce((acc, cur) => acc + cur.total, 0);
+      const totalOrders = orderHistory.length;
+      const avgOrderPrice = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(1) : 0;
+
+      let itemSummary = {};
+      orderHistory.forEach(order => {
+        for (let name in order.items) {
+          if (!itemSummary[name]) {
+            itemSummary[name] = { 銷售數量: 0, 銷售金額: 0 };
+          }
+          itemSummary[name].銷售數量 += order.items[name].qty;
+          itemSummary[name].銷售金額 += order.items[name].qty * order.items[name].price;
+        }
+      });
+
+      let summaryData = [
+        { "統計項目": "當日總營業額", "數值": `$${totalRevenue}` },
+        { "統計項目": "當日總單數", "數值": `${totalOrders} 單` },
+        { "統計項目": "平均客單價", "數值": `$${avgOrderPrice}` }
+      ];
+
+      let itemsData = [];
+      for (let name in itemSummary) {
+        itemsData.push({
+          "品項名稱": name,
+          "銷售數量": itemSummary[name].銷售數量,
+          "銷售金額": itemSummary[name].銷售金額
+        });
+      }
+
+      const wb = XLSX.utils.book_new();
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, "當日營運總覽");
+
+      const wsItems = XLSX.utils.json_to_sheet(itemsData);
+      XLSX.utils.book_append_sheet(wb, wsItems, "品項銷售統計");
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `蕎淶清飲_營業報表_${todayStr}.xlsx`);
+    }
+
+    renderMenu();
+  </script>
 </body>
 </html>
