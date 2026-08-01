@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>蕎淶清飲 智能 POS (iPad 特大字體版)</title>
+  <title>蕎淶清飲 智能 POS (iPad 記憶持久版)</title>
   <!-- 引入 SheetJS 用於匯出真正的 .xlsx 檔案 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -94,7 +94,10 @@
         <div style="font-weight: bold; color: #1e40af; font-size: 1.2rem;">📊 營運統計與匯出</div>
         <div style="font-size: 1.05rem; color: #475569; margin-top: 4px;" id="dailyStatsHint">今日營業額: $0 | 總單數: 0 單</div>
       </div>
-      <button class="btn" style="background: #2563eb; color: white; padding: 10px 18px; font-size: 1.1rem;" onclick="exportExcel()">匯出 Excel</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn" style="background: #2563eb; color: white; padding: 10px 14px; font-size: 1.1rem;" onclick="exportExcel()">匯出 Excel</button>
+        <button class="btn" style="background: #ef4444; color: white; padding: 10px 14px; font-size: 1.1rem;" onclick="clearHistory()">清空歷史</button>
+      </div>
     </div>
 
     <h2>📋 即時訂單列隊</h2>
@@ -104,7 +107,8 @@
   </div>
 
   <script>
-    const menuData = {
+    // 預設菜單，若 localStorage 有儲存過修改的價格則會優先讀取
+    let menuData = JSON.parse(localStorage.getItem('qiaolai_menuData')) || {
       pizza: [
         { name: "海鮮比薩", price: 80, type: "pizza" },
         { name: "燻雞比薩", price: 80, type: "pizza" },
@@ -125,11 +129,18 @@
       ]
     };
 
+    // 從 localStorage 讀取歷史訂單記錄，確保重新整理不遺失
+    let orderHistory = JSON.parse(localStorage.getItem('qiaolai_orderHistory')) || [];
+
     let cart = {}; 
-    let orderHistory = []; 
     let unlockCount = 0;
     let isEditMode = false;
     let hasCombo = false;
+
+    function saveToLocalStorage() {
+      localStorage.setItem('qiaolai_orderHistory', JSON.stringify(orderHistory));
+      localStorage.setItem('qiaolai_menuData', JSON.stringify(menuData));
+    }
 
     function renderMenu() {
       for (let category in menuData) {
@@ -165,6 +176,7 @@
       const target = menuData[category].find(i => i.name === itemName);
       if (target) {
         target.price = p;
+        saveToLocalStorage();
         renderMenu();
         if (isEditMode) {
           document.getElementById("menuPanel").classList.add("edit-mode");
@@ -280,7 +292,7 @@
       const timeStr = now.toTimeString().split(' ')[0];
       
       const order = {
-        id: orderHistory.length + 1,
+        id: orderHistory.length > 0 ? orderHistory[orderHistory.length - 1].id + 1 : 1,
         time: timeStr,
         items: JSON.parse(JSON.stringify(cart)),
         total: total,
@@ -288,6 +300,7 @@
       };
 
       orderHistory.push(order);
+      saveToLocalStorage();
       
       cart = {};
       hasCombo = false;
@@ -333,7 +346,17 @@
       const target = orderHistory.find(o => o.id === id);
       if (target) {
         target.status = target.status === 'done' ? 'processing' : 'done';
+        saveToLocalStorage();
         renderQueue();
+      }
+    }
+
+    function clearHistory() {
+      if (confirm("確定要清空所有歷史訂單記錄嗎？")) {
+        orderHistory = [];
+        saveToLocalStorage();
+        renderQueue();
+        updateDailyStatsHint();
       }
     }
 
@@ -348,12 +371,11 @@
       const range = XLSX.utils.decode_range(ws['!ref']);
       let colWidths = [];
       for (let C = range.s.c; C <= range.e.c; ++C) {
-        let maxLen = 10; // 預設最小寬度
+        let maxLen = 10;
         for (let R = range.s.r; R <= range.e.r; ++R) {
           const cell = ws[XLSX.utils.encode_cell({r: R, c: C})];
           if (cell && cell.v !== undefined) {
             const valStr = String(cell.v);
-            // 中文字計算寬度加權
             let len = 0;
             for (let i = 0; i < valStr.length; i++) {
               len += (valStr.charCodeAt(i) > 128) ? 2.2 : 1.2;
@@ -361,7 +383,7 @@
             if (len > maxLen) maxLen = len;
           }
         }
-        colWidths.push({ wch: Math.ceil(maxLen) + 4 }); // 留出舒適間距
+        colWidths.push({ wch: Math.ceil(maxLen) + 4 });
       }
       ws['!cols'] = colWidths;
     }
@@ -416,7 +438,10 @@
       XLSX.writeFile(wb, `蕎淶清飲_營業報表_${todayStr}.xlsx`);
     }
 
+    // 初始化載入
     renderMenu();
+    renderQueue();
+    updateDailyStatsHint();
   </script>
 </body>
 </html>
