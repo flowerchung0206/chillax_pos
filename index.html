@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>蕎淶清飲 智能 POS (專業營業報告版)</title>
-  <!-- 引入 SheetJS 用於匯出多工作表專業 .xlsx 檔案 -->
+  <title>蕎淶清飲 智能 POS </title>
+  <!-- 引入 SheetJS 用於匯出真正的 .xlsx 檔案 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -24,13 +24,11 @@
     .edit-mode .price-text { display: none; }
     .edit-mode .price-input { display: inline-block; }
     .checkout-zone { margin-top: auto; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
-    .checkout-zone input { font-size: 1.1rem; padding: 6px; width: 100px; border-radius: 6px; border: 1px solid #cbd5e1; }
+    .checkout-zone input { font-size: 1.1rem; padding: 6px; width: 110px; border-radius: 6px; border: 1px solid #cbd5e1; }
     .total-price { font-size: 1.4rem; color: #e74c3c; font-weight: bold; }
     .queue-item { background: #fff; margin-bottom: 8px; padding: 10px; border-radius: 6px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: 0.3s;}
     .queue-done { opacity: 0.5; border-left: 4px solid #10b981; text-decoration: line-through; background: #f0fdf4; }
-    .export-bar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: #eff6ff; padding: 12px; border-radius: 8px; border: 1px solid #bfdbfe; }
-    .btn-exact { background: #f39c12; color: white; padding: 6px 10px; font-size: 0.9rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
-    .btn-exact:active { transform: scale(0.95); }
+    .export-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #bfdbfe; }
   </style>
 </head>
 <body>
@@ -42,13 +40,13 @@
       <span style="font-size: 0.75rem; color: #64748b;">(連續點擊標題 5 下解鎖價格修改)</span>
     </div>
     
-    <h2>🍕 比薩 (均一價 80)</h2>
+    <h2>🍕 比薩 </h2>
     <div class="menu-grid" id="pizzaMenu"></div>
     
-    <h2>🥤 飲料 (60-90元)</h2>
+    <h2>🥤 飲料 </h2>
     <div class="menu-grid" id="drinkMenu"></div>
     
-    <h2>🍰 甜點與點心</h2>
+    <h2>🍰 甜點</h2>
     <div class="menu-grid" id="snackMenu"></div>
   </div>
 
@@ -60,16 +58,17 @@
     </div>
     
     <div class="checkout-zone">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;">
+        <button class="btn" style="background: #e17055; color: white; padding: 6px 12px; font-size: 0.9rem;" onclick="applyComboDiscount()">🏷️ 組合價 (-$10)</button>
+        <span style="font-size: 0.85srem; color: #d63031;" id="comboHint"></span>
+      </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span>總計金額:</span>
         <span class="total-price">$<span id="totalAmount">0</span></span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;">
         <span>客收現金:</span>
-        <div style="display: flex; gap: 5px; align-items: center;">
-          <input type="number" id="cashGiven" placeholder="輸入現金">
-          <button class="btn-exact" onclick="setExactCash()" title="自動填入總金額，不用找零">剛好付清</button>
-        </div>
+        <input type="number" id="cashGiven" placeholder="輸入現金">
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
         <span>應找零錢:</span>
@@ -79,19 +78,14 @@
     </div>
   </div>
 
-  <!-- 右側：出單與匯出報告區 -->
+  <!-- 右側：出單與匯出區 -->
   <div class="panel">
     <div class="export-bar">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <strong>📊 營業資料與報告</strong><br>
-          <span style="font-size: 0.75rem; color: #1e40af;" id="recordCount">今日已完成 0 筆訂單</span>
-        </div>
+      <div>
+        <strong>📊 營業資料匯出</strong><br>
+        <span style="font-size: 0.75rem; color: #1e40af;" id="recordCount">今日已完成 0 筆訂單</span>
       </div>
-      <div style="display: flex; gap: 6px;">
-        <button class="btn" style="background: #2563eb; color: white; flex: 1; padding: 8px;" onclick="exportRawOrders()">📥 匯出明細表</button>
-        <button class="btn" style="background: #0d9488; color: white; flex: 1; padding: 8px;" onclick="exportBusinessReport()">📈 彙整營業報告</button>
-      </div>
+      <button class="btn" style="background: #2563eb; color: white; padding: 8px 12px;" onclick="exportToExcel()">📥 匯出 Excel 表格</button>
     </div>
 
     <h2>📋 出單檢視與完成狀態</h2>
@@ -118,7 +112,7 @@
   ];
 
   let cart = [];
-  let orderQueueData = []; // 歷史訂單
+  let orderQueueData = []; // 儲存所有歷史訂單用於匯出 Excel
   let orderCount = 0;
   
   // 隱藏版功能：連續點擊標題 5 次解鎖改價
@@ -154,7 +148,29 @@
   function updatePrice(id, newPrice) {
     let p = products.find(x => x.id === id);
     if(p) p.price = parseInt(newPrice) || p.price;
-    renderMenu();
+  
+  let comboApplied = false;
+
+  function applyComboDiscount() {
+    let hasPizza = cart.some(item => item.type === 'pizza');
+    let hasDrink = cart.some(item => item.type === 'drink');
+    
+    if (!hasPizza || !hasDrink) {
+      alert('⚠️ 組合價條件：購物車內必須同時包含「任一比薩」與「任一飲料」才能折價10元喔！');
+      return;
+    }
+    
+    if (comboApplied) {
+      alert('💡 已經套用過組合價優惠囉！');
+      return;
+    }
+
+    comboApplied = true;
+    document.getElementById('comboHint').innerText = '已折 $10 (比薩+飲料)';
+    updateCart();
+  }
+
+  renderMenu();
     updateCart();
   }
 
@@ -182,6 +198,23 @@
         <span>$${item.price} <button style="border:none; background:none; cursor:pointer; color:#ef4444; font-weight:bold;" onclick="removeFromCart(${index})">✕</button></span>
       </div>`;
     });
+    
+    // 檢查是否符合組合價條件，若品項被刪到不符合則自動取消優惠
+    let hasPizza = cart.some(item => item.type === 'pizza');
+    let hasDrink = cart.some(item => item.type === 'drink');
+    if (!hasPizza || !hasDrink) {
+      comboApplied = false;
+      document.getElementById('comboHint').innerText = '';
+    }
+
+    if (comboApplied) {
+      total -= 10;
+      cartHTML += `<div class="cart-item" style="color: #e74c3c; font-weight: bold;">
+        <span>🏷️ 比薩飲料組合價折扣</span>
+        <span>-$10</span>
+      </div>`;
+    }
+
     cartListEl.innerHTML = cartHTML;
     document.getElementById('totalAmount').innerText = total;
     calculateChange();
@@ -190,14 +223,6 @@
   function removeFromCart(index) {
     cart.splice(index, 1);
     updateCart();
-  }
-
-  // 剛好付清 / 不用找零按鈕
-  function setExactCash() {
-    let total = parseInt(document.getElementById('totalAmount').innerText) || 0;
-    if(total <= 0) return alert('⚠️ 購物車目前沒有金額喔！');
-    document.getElementById('cashGiven').value = total;
-    calculateChange();
   }
 
   document.getElementById('cashGiven').addEventListener('input', calculateChange);
@@ -219,22 +244,19 @@
     if(cart.length === 0) return alert('⚠️ 購物車是空的喔！');
     let total = parseInt(document.getElementById('totalAmount').innerText) || 0;
     let cash = parseInt(document.getElementById('cashGiven').value) || 0;
-    if(cash < total) return alert('⚠️ 客人給的現金不夠付帳喔！');
+    if(cash < total) return alert('⚠️ 客人給的豐厚現金不夠付帳喔！');
 
     orderCount++;
     let orderNum = String(orderCount).padStart(3, '0');
     let orderTimeStr = new Date().toLocaleString('zh-TW');
-    
-    // 詳細記錄每個品項及其數量與單價，方便做商品數量統計
-    let rawItems = cart.map(item => ({ name: item.name, price: item.price }));
     let orderSummary = cart.map(item => `${item.name}($${item.price})`).join(', ');
     let totalQty = cart.length;
 
+    // 記錄至歷史資料陣列供 Excel 匯出用
     let recordItem = {
       orderNum: `訂單 #${orderNum}`,
       orderTime: orderTimeStr,
-      items: rawItems,
-      itemsSummary: orderSummary,
+      items: orderSummary,
       totalQty: totalQty,
       totalPrice: total,
       status: '待出單'
@@ -243,7 +265,7 @@
 
     // 渲染出單畫面
     let queueContainer = document.getElementById('orderQueue');
-    if(orderQueueData.length === 1) queueContainer.innerHTML = '';
+    if(orderQueueData.length === 1) queueContainer.innerHTML = ''; // 清除提示文字
     
     let queueHTML = `
       <div class="queue-item" id="order-${orderNum}">
@@ -259,10 +281,13 @@
     `;
     queueContainer.innerHTML = queueHTML + queueContainer.innerHTML;
 
+    // 更新計數
     document.getElementById('recordCount').innerText = `今日已完成 ${orderQueueData.length} 筆訂單`;
 
     // 清空重置
     cart = [];
+    comboApplied = false;
+    document.getElementById('comboHint').innerText = '';
     updateCart();
     document.getElementById('cashGiven').value = '';
     document.getElementById('changeAmount').innerText = '$0';
@@ -279,14 +304,17 @@
     }
   }
 
-  // 1. 匯出純明細表
-  function exportRawOrders() {
-    if(orderQueueData.length === 0) return alert('⚠️ 目前沒有任何訂單紀錄可以匯出喔！');
+  // 手動匯出 Excel 核心函式
+  function exportToExcel() {
+    if(orderQueueData.length === 0) {
+      return alert('⚠️ 目前沒有任何訂單數據可以匯出喔！');
+    }
 
+    // 整理成 SheetJS 格式
     let exportRows = orderQueueData.map(o => ({
       '訂單編號': o.orderNum,
       '點單時間': o.orderTime,
-      '品項內容': o.itemsSummary,
+      '品項內容': o.items,
       '商品總數量': o.totalQty,
       '總金額 (元)': o.totalPrice,
       '出單狀態': o.status
@@ -294,85 +322,36 @@
 
     let worksheet = XLSX.utils.json_to_sheet(exportRows);
     let workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "訂單明細");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "營業收入與數量統計");
 
+    // 設定檔名包含當天日期
     let todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
-    XLSX.writeFile(workbook, `蕎淶清飲_訂單明細_${todayStr}.xlsx`);
+    let fileName = `蕎淶清飲_營業統計_${todayStr}.xlsx`;
+
+    // 下載檔案
+    XLSX.writeFile(workbook, fileName);
   }
 
-  // 2. 手動彙整營業報告 (多工作表：綜合摘要 + 商品銷售統計 + 訂單明細)
-  function exportBusinessReport() {
-    if(orderQueueData.length === 0) return alert('⚠️ 目前沒有任何營業數據可以彙整報告喔！');
 
-    let totalRevenue = orderQueueData.reduce((sum, o) => sum + o.totalPrice, 0);
-    let totalOrdersCount = orderQueueData.length;
-    let totalItemsSold = orderQueueData.reduce((sum, o) => sum + o.totalQty, 0);
+  let comboApplied = false;
 
-    // 計算各商品銷售數量與營收佔比
-    let productStats = {};
-    orderQueueData.forEach(o => {
-      o.items.forEach(i => {
-        if(!productStats[i.name]) {
-          productStats[i.name] = { qty: 0, revenue: 0 };
-        }
-        productStats[i.name].qty += 1;
-        productStats[i.name].revenue += i.price;
-      });
-    });
-
-    let statsRows = [];
-    for(let name in productStats) {
-      statsRows.push({
-        '商品名稱': name,
-        '銷售數量 (份)': productStats[name].qty,
-        '總銷售額 (元)': productStats[name].revenue
-      });
+  function applyComboDiscount() {
+    let hasPizza = cart.some(item => item.type === 'pizza');
+    let hasDrink = cart.some(item => item.type === 'drink');
+    
+    if (!hasPizza || !hasDrink) {
+      alert('⚠️ 組合價條件：購物車內必須同時包含「任一比薩」與「任一飲料」才能折價10元喔！');
+      return;
+    }
+    
+    if (comboApplied) {
+      alert('💡 已經套用過組合價優惠囉！');
+      return;
     }
 
-    // 固定成本：店租 38000 + 租賃稅 3800
-    let fixedRent = 38000;
-    let fixedTax = 3800;
-    let totalFixedCost = fixedRent + fixedTax;
-    let netProfit = totalRevenue - totalFixedCost;
-
-    // 工作表一：綜合營業摘要
-    let summaryData = [
-      { '項目': '營業報表主題', '數值': '蕎淶清飲 營運日報表' },
-      { '項目': '統計產生時間', '數值': new Date().toLocaleString('zh-TW') },
-      { '項目': '總營業額 (Gross Revenue)', '數值': totalRevenue },
-      { '項目': '總訂單筆數 (Total Orders)', '數值': totalOrdersCount },
-      { '項目': '商品總銷售數 (Total Units)', '數值': totalItemsSold },
-      { '項目': '固定成本-店租', '數值': fixedRent },
-      { '項目': '固定成本-租賃稅', '數值': fixedTax },
-      { '項目': '固定成本總計 (Fixed Costs)', '數值': totalFixedCost },
-      { '項目': '毛利/淨利試算 (Net Estimation)', '數值': netProfit }
-    ];
-
-    // 工作表二：商品數量統計
-    let sheetStats = XLSX.utils.json_to_sheet(statsRows);
-
-    // 工作表三：綜合摘要
-    let sheetSummary = XLSX.utils.json_to_sheet(summaryData);
-
-    // 工作表四：詳細訂單記錄
-    let detailRows = orderQueueData.map(o => ({
-      '訂單編號': o.orderNum,
-      '點單時間': o.orderTime,
-      '品項內容': o.itemsSummary,
-      '商品總數量': o.totalQty,
-      '總金額 (元)': o.totalPrice,
-      '出單狀態': o.status
-    }));
-    let sheetDetail = XLSX.utils.json_to_sheet(detailRows);
-
-    // 建立 Workbook 並組合多個分頁
-    let workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, sheetSummary, "綜合財務摘要");
-    XLSX.utils.book_append_sheet(workbook, sheetStats, "商品數量統計");
-    XLSX.utils.book_append_sheet(workbook, sheetDetail, "訂單明細");
-
-    let todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
-    XLSX.writeFile(workbook, `蕎淶清飲_完整營業報告_${todayStr}.xlsx`);
+    comboApplied = true;
+    document.getElementById('comboHint').innerText = '已折 $10 (比薩+飲料)';
+    updateCart();
   }
 
   renderMenu();
