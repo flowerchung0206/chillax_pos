@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>蕎淶清飲 智能 POS</title>
+  <style>
+    body { font-family: '微軟正黑體', sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; display: flex; gap: 20px; }
+    .panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 1; height: 90vh; overflow-y: auto; }
+    h2 { color: #333; font-size: 1.2rem; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    h1 { font-size: 1.5rem; cursor: pointer; color: #2c3e50; user-select: none; transition: 0.3s; }
+    h1:active { color: #e74c3c; }
+    .btn { padding: 10px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn-pizza { background: #ff7675; color: white; }
+    .btn-drink { background: #74b9ff; color: #333; }
+    .btn-snack { background: #fdcb6e; color: #333; }
+    .btn:active { transform: scale(0.95); }
+    .cart-item, .queue-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #ccc; align-items: center; }
+    .price-input { width: 60px; display: none; padding: 5px; margin-left: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    .edit-mode .price-text { display: none; }
+    .edit-mode .price-input { display: inline-block; }
+    .checkout-zone { margin-top: 20px; background: #ecf0f1; padding: 15px; border-radius: 8px; }
+    .checkout-zone input { font-size: 1.2rem; padding: 5px; width: 120px; border-radius: 5px; border: 1px solid #bdc3c7; }
+    .total-price { font-size: 1.5rem; color: #e74c3c; font-weight: bold; }
+    .queue-item { background: #fdfbfb; margin-bottom: 10px; padding: 10px; border-radius: 5px; border-left: 5px solid #e74c3c; transition: 0.3s;}
+    .queue-done { opacity: 0.5; border-left: 5px solid #2ecc71; text-decoration: line-through; }
+  </style>
+</head>
+<body>
+
+  <!-- 左側：點餐區 -->
+  <div class="panel" id="menuPanel">
+    <h1 id="brandTitle">🍃 蕎淶清飲 智能 POS</h1>
+    <p style="font-size: 0.8rem; color: #888;">(狂點標題 5 下解鎖修改價格模式)</p>
+    
+    <h2>🍕 比薩 (均一價 80)</h2>
+    <div id="pizzaMenu"></div>
+    
+    <h2>🥤 飲品 (預設 60)</h2>
+    <div id="drinkMenu"></div>
+    
+    <h2>🍰 甜點</h2>
+    <div id="snackMenu"></div>
+  </div>
+
+  <!-- 中間：購物車與結帳區 -->
+  <div class="panel">
+    <h2>🛒 購物車結帳</h2>
+    <div id="cartList"></div>
+    
+    <div class="checkout-zone">
+      <p>總計金額: <span class="total-price" id="totalAmount">0</span> 元</p>
+      <p>客收現金: <input type="number" id="cashGiven" placeholder="輸入現金"></p>
+      <p>應找零錢: <span id="changeAmount" style="font-size: 1.5rem; font-weight: bold; color: #27ae60;">0</span> 元</p>
+      <button class="btn" style="background: #2ecc71; color: white; width: 100%; font-size: 1.2rem; margin-top: 10px;" onclick="checkout()">確認結帳 (Checkout)</button>
+    </div>
+  </div>
+
+  <!-- 右側：出單與檢視區 -->
+  <div class="panel">
+    <h2>📋 出單檢視列</h2>
+    <div id="orderQueue"></div>
+  </div>
+
+<script>
+  // 商品資料庫 (Database)
+  let products = [
+    { id: 'p1', name: '海鮮比薩', price: 80, type: 'pizza' },
+    { id: 'p2', name: '燻雞比薩', price: 80, type: 'pizza' },
+    { id: 'p3', name: '總匯比薩', price: 80, type: 'pizza' },
+    { id: 'p4', name: '夏威夷比薩', price: 80, type: 'pizza' },
+    { id: 'd1', name: '厚奶茶', price: 60, type: 'drink' },
+    { id: 'd2', name: '決明子紅萱', price: 60, type: 'drink' },
+    { id: 'd3', name: '薰衣草奶茶', price: 60, type: 'drink' },
+    { id: 'd4', name: '四季春茶', price: 60, type: 'drink' },
+    { id: 'd5', name: '冬瓜茶', price: 60, type: 'drink' },
+    { id: 'd6', name: '冬瓜檸檬', price: 60, type: 'drink' },
+    { id: 's1', name: '杏仁瓦片', price: 180, type: 'snack' },
+    { id: 's2', name: '法式千層蛋糕', price: 120, type: 'snack' }
+  ];
+
+  let cart = [];
+  let orderCount = 0;
+  
+  // 隱藏版功能：連續點擊標題 5 次解鎖改價
+  let clickCount = 0;
+  document.getElementById('brandTitle').addEventListener('click', () => {
+    clickCount++;
+    if(clickCount >= 5) {
+      document.getElementById('menuPanel').classList.toggle('edit-mode');
+      alert('🔓 隱藏模式解鎖：您可以直接修改各品項價格了！');
+      clickCount = 0;
+    }
+  });
+
+  // 渲染前端選單 (UI Rendering)
+  function renderMenu() {
+    ['pizza', 'drink', 'snack'].forEach(type => {
+      let container = document.getElementById(type + 'Menu');
+      container.innerHTML = '';
+      products.filter(p => p.type === type).forEach(p => {
+        let btnType = type === 'pizza' ? 'btn-pizza' : type === 'drink' ? 'btn-drink' : 'btn-snack';
+        container.innerHTML += `
+          <div style="display:inline-block;">
+            <button class="btn ${btnType}" onclick="addToCart('${p.id}')">
+              ${p.name} $<span class="price-text">${p.price}</span>
+            </button>
+            <input type="number" class="price-input" value="${p.price}" onchange="updatePrice('${p.id}', this.value)" title="動態修改價格">
+          </div>
+        `;
+      });
+    });
+  }
+
+  // 更新隱藏版價格
+  function updatePrice(id, newPrice) {
+    let p = products.find(x => x.id === id);
+    if(p) p.price = parseInt(newPrice) || p.price;
+    renderMenu();
+    updateCart();
+  }
+
+  // 處理購物車邏輯
+  function addToCart(id) {
+    let p = Object.assign({}, products.find(x => x.id === id));
+    cart.push(p);
+    updateCart();
+  }
+
+  function updateCart() {
+    let cartHTML = '';
+    let total = 0;
+    cart.forEach((item, index) => {
+      total += item.price;
+      cartHTML += `<div class="cart-item">
+        <span>${item.name}</span>
+        <span>$${item.price} <button style="border:none; background:none; cursor:pointer;" onclick="removeFromCart(${index})">❌</button></span>
+      </div>`;
+    });
+    document.getElementById('cartList').innerHTML = cartHTML;
+    document.getElementById('totalAmount').innerText = total;
+    calculateChange();
+  }
+
+  function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCart();
+  }
+
+  // 找零計算 (Cash Handling)
+  document.getElementById('cashGiven').addEventListener('input', calculateChange);
+  function calculateChange() {
+    let total = parseInt(document.getElementById('totalAmount').innerText) || 0;
+    let cash = parseInt(document.getElementById('cashGiven').value) || 0;
+    let change = cash - total;
+    let changeEl = document.getElementById('changeAmount');
+    if(cash > 0 && change >= 0) {
+        changeEl.innerText = change;
+        changeEl.style.color = '#27ae60';
+    } else {
+        changeEl.innerText = '0';
+        changeEl.style.color = '#e74c3c';
+    }
+  }
+
+  // 結帳出單
+  function checkout() {
+    if(cart.length === 0) return alert('⚠️ 購物車是空的喔！');
+    let total = parseInt(document.getElementById('totalAmount').innerText) || 0;
+    let cash = parseInt(document.getElementById('cashGiven').value) || 0;
+    if(cash < total) return alert('⚠️ 客人給的錢不夠啦！');
+
+    orderCount++;
+    let orderNum = String(orderCount).padStart(3, '0');
+    let orderSummary = cart.map(item => item.name).join(', ');
+    
+    // 生成出單紀錄，並自帶檢視打勾功能
+    let queueHTML = `
+      <div class="queue-item" id="order-${orderNum}">
+        <div>
+          <strong>訂單 #${orderNum}</strong> <br>
+          <span style="font-size: 0.9rem;">${orderSummary}</span> <br>
+          <span style="color:red; font-weight:bold;">總計: $${total}</span>
+        </div>
+        <div style="margin-top: 10px;">
+          <label><input type="checkbox" onchange="markDone('${orderNum}', this)"> 點擊確認出單完成</label>
+        </div>
+      </div>
+    `;
+    document.getElementById('orderQueue').innerHTML = queueHTML + document.getElementById('orderQueue').innerHTML;
+
+    // 清空重置
+    cart = [];
+    updateCart();
+    document.getElementById('cashGiven').value = '';
+    document.getElementById('changeAmount').innerText = '0';
+  }
+
+  // 出單狀態切換
+  function markDone(orderNum, checkbox) {
+    let el = document.getElementById('order-' + orderNum);
+    if(checkbox.checked) {
+      el.classList.add('queue-done');
+    } else {
+      el.classList.remove('queue-done');
+    }
+  }
+
+  renderMenu();
+</script>
+</body>
+</html>
