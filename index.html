@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>蕎淶清飲 智能 POS (奶茶色高級質感版)</title>
+  <title>蕎淶清飲 智能 POS (奶茶色質感觸控鍵盤版)</title>
   <!-- 引入 SheetJS 用於匯出真正的 .xlsx 檔案 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -81,6 +81,55 @@
     .queue-item { background: #fffcf9; margin-bottom: 12px; padding: 16px; border-radius: 12px; border-left: 6px solid #b08d79; box-shadow: 0 2px 5px rgba(110, 90, 75, 0.05); border-top: 1px solid #f0e6df; border-right: 1px solid #f0e6df; border-bottom: 1px solid #f0e6df; transition: 0.3s;}
     .queue-done { opacity: 0.5; border-left: 6px solid #85a38b; text-decoration: line-through; background: #f0f5f1; }
     .export-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f4ede6; padding: 15px 18px; border-radius: 12px; border: 2px solid #e2d3c7; }
+
+    /* 奶茶色專屬自訂數字鍵盤彈窗 */
+    #numpadOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(74, 64, 59, 0.4);
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+    }
+    .numpad-box {
+      background: #fffcf9;
+      padding: 24px;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(110, 90, 75, 0.2);
+      border: 2px solid #e2d3c7;
+      width: 340px;
+    }
+    .numpad-display {
+      font-size: 2rem;
+      text-align: right;
+      background: #f4ede6;
+      padding: 12px 18px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      color: #a65d37;
+      font-weight: bold;
+      border: 2px solid #d2c2b4;
+    }
+    .numpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .num-btn {
+      background: #f4eae1;
+      border: 2px solid #dfc7b5;
+      color: #5c4b42;
+      font-size: 1.6rem;
+      padding: 18px 0;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.1s;
+    }
+    .num-btn:active { background: #e6d5c5; transform: scale(0.95); }
+    .num-btn-action { background: #e2d3c7; color: #4a403b; }
+    .num-btn-ok { background: #9c7b66; color: white; border-color: #8c6a56; grid-column: span 3; }
   </style>
 </head>
 <body>
@@ -121,7 +170,8 @@
       <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
         <span style="font-size: 1.3rem;">客收現金:</span>
         <div style="display: flex; gap: 10px; align-items: center;">
-          <input type="number" id="cashGiven" placeholder="輸入現金" oninput="calcChange()">
+          <!-- 設定 readonly 防止平板原生鍵盤彈出 -->
+          <input type="text" id="cashGiven" placeholder="點擊輸入" readonly onclick="openNumpad()">
           <button class="btn" style="background: #85a38b; color: white; padding: 12px 18px; font-size: 1.2rem;" onclick="setExactCash()">⚡ 不找零</button>
         </div>
       </div>
@@ -152,6 +202,29 @@
     </div>
   </div>
 
+  <!-- 奶茶色自訂數字鍵盤彈窗 -->
+  <div id="numpadOverlay" onclick="closeNumpadBg(event)">
+    <div class="numpad-box">
+      <div style="font-weight: bold; margin-bottom: 8px; color: #6d5d53; font-size: 1.2rem;">⌨️ 輸入客收現金金額</div>
+      <div class="numpad-display" id="numpadVal">0</div>
+      <div class="numpad-grid">
+        <button class="num-btn" onclick="numPress('7')">7</button>
+        <button class="num-btn" onclick="numPress('8')">8</button>
+        <button class="num-btn" onclick="numPress('9')">9</button>
+        <button class="num-btn" onclick="numPress('4')">4</button>
+        <button class="num-btn" onclick="numPress('5')">5</button>
+        <button class="num-btn" onclick="numPress('6')">6</button>
+        <button class="num-btn" onclick="numPress('1')">1</button>
+        <button class="num-btn" onclick="numPress('2')">2</button>
+        <button class="num-btn" onclick="numPress('3')">3</button>
+        <button class="num-btn num-btn-action" onclick="numPress('0')">0</button>
+        <button class="num-btn num-btn-action" onclick="numDelete()">⌫</button>
+        <button class="num-btn num-btn-action" onclick="numClear()">清除</button>
+        <button class="num-btn num-btn-ok" onclick="confirmNumpad()">確定</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let menuData = JSON.parse(localStorage.getItem('qiaolai_menuData')) || {
       pizza: [
@@ -178,10 +251,49 @@
     let cart = {}; 
     let unlockCount = 0;
     let isEditMode = false;
+    let tempNumpadStr = "0";
 
     function saveToLocalStorage() {
       localStorage.setItem('qiaolai_orderHistory', JSON.stringify(orderHistory));
       localStorage.setItem('qiaolai_menuData', JSON.stringify(menuData));
+    }
+
+    // 數位鍵盤控制函式
+    function openNumpad() {
+      const current = document.getElementById("cashGiven").value;
+      tempNumpadStr = current === "" ? "0" : current;
+      document.getElementById("numpadVal").innerText = tempNumpadStr;
+      document.getElementById("numpadOverlay").style.display = "flex";
+    }
+    function closeNumpadBg(e) {
+      if (e.target.id === "numpadOverlay") {
+        document.getElementById("numpadOverlay").style.display = "none";
+      }
+    }
+    function numPress(digit) {
+      if (tempNumpadStr === "0") {
+        tempNumpadStr = digit;
+      } else {
+        tempNumpadStr += digit;
+      }
+      document.getElementById("numpadVal").innerText = tempNumpadStr;
+    }
+    function numDelete() {
+      if (tempNumpadStr.length > 1) {
+        tempNumpadStr = tempNumpadStr.slice(0, -1);
+      } else {
+        tempNumpadStr = "0";
+      }
+      document.getElementById("numpadVal").innerText = tempNumpadStr;
+    }
+    function numClear() {
+      tempNumpadStr = "0";
+      document.getElementById("numpadVal").innerText = tempNumpadStr;
+    }
+    function confirmNumpad() {
+      document.getElementById("cashGiven").value = tempNumpadStr === "0" ? "" : tempNumpadStr;
+      document.getElementById("numpadOverlay").style.display = "none";
+      calcChange();
     }
 
     function renderMenu() {
@@ -245,7 +357,7 @@
       renderCart();
     }
 
-    // 計算比薩與飲料數量，自動配對折 -$10（如 1比薩+1飲料 折10，2比薩+2飲料 折20，若只有2個比薩則不折價）
+    // 計算比薩與飲料配對折扣（限定同時有比薩與飲料才折 $10）
     function getDiscountInfo() {
       let pizzaCount = 0;
       let drinkCount = 0;
