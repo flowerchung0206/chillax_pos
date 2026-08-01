@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>蕎淶清飲 智能 POS (奶茶色質感觸控鍵盤版)</title>
+  <title>蕎淶清飲 智能 POS (iPad Air 4 專屬特大版)</title>
   <!-- 引入 SheetJS 用於匯出真正的 .xlsx 檔案 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -33,14 +33,14 @@
     }
     h2 { 
       color: #6d5d53; 
-      font-size: 1.5rem; 
+      font-size: 1.6rem; 
       border-bottom: 2px solid #e8dfd8; 
       padding-bottom: 12px; 
       margin-top: 15px; 
       margin-bottom: 15px; 
     }
     h1 { 
-      font-size: 2rem; 
+      font-size: 2.2rem; 
       cursor: pointer; 
       color: #5c4b42; 
       user-select: none; 
@@ -49,14 +49,14 @@
     }
     h1:active { color: #b08d79; }
     
-    /* 奶茶色系 iPad 特大觸控按鈕 */
+    /* 左側點餐區按鈕字體與大小特化調整 */
     .btn { 
-      padding: 16px 20px; 
+      padding: 20px 24px; 
       margin: 8px; 
       border: none; 
-      border-radius: 12px; 
+      border-radius: 14px; 
       cursor: pointer; 
-      font-size: 1.3rem; 
+      font-size: 2.4rem; /* 品項與數字按鈕字體放大 */
       transition: 0.2s; 
       box-shadow: 0 3px 6px rgba(110, 90, 75, 0.06); 
       font-weight: bold; 
@@ -66,47 +66,48 @@
     .btn-snack { background: #f0e6ef; color: #734f6e; border: 2px solid #e0cbe0; }
     .btn:active { transform: scale(0.96); }
     
-    .menu-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-    .menu-item-wrap { display: inline-flex; align-items: center; background: #fff8f3; padding: 8px 12px; border-radius: 12px; border: 2px solid #ebdcd0; }
+    .menu-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+    .menu-item-wrap { display: inline-flex; align-items: center; background: #fff8f3; padding: 10px 14px; border-radius: 14px; border: 2px solid #ebdcd0; }
+    .menu-item-wrap .btn { font-size: 2.2rem; } /* 左側點餐品項字體 */
     
-    .cart-item, .queue-item { display: flex; justify-content: space-between; padding: 16px 0; border-bottom: 1px dashed #dfd0c4; align-items: center; font-size: 1.3rem; }
-    .price-input { width: 90px; display: none; padding: 8px; margin-left: 8px; border: 2px solid #b09f92; border-radius: 8px; text-align: center; font-size: 1.3rem; }
+    .cart-item, .queue-item { display: flex; justify-content: space-between; padding: 16px 0; border-bottom: 1px dashed #dfd0c4; align-items: center; font-size: 1.4rem; }
+    .price-input { width: 100px; display: none; padding: 10px; margin-left: 8px; border: 2px solid #b09f92; border-radius: 8px; text-align: center; font-size: 1.4rem; }
     .edit-mode .price-text { display: none; }
     .edit-mode .price-input { display: inline-block; }
     
     .checkout-zone { margin-top: auto; background: #f4ede6; padding: 22px; border-radius: 14px; border: 2px solid #e2d3c7; }
-    .checkout-zone input { font-size: 1.5rem; padding: 10px; width: 150px; border-radius: 8px; border: 2px solid #b8a698; text-align: center; background: #fffcf9; color: #4a403b; }
-    .total-price { font-size: 2rem; color: #a65d37; font-weight: bold; }
+    .checkout-zone input { font-size: 1.8rem; padding: 12px; width: 180px; border-radius: 8px; border: 2px solid #b8a698; text-align: center; background: #fffcf9; color: #4a403b; }
+    .total-price { font-size: 2.3rem; color: #a65d37; font-weight: bold; }
     
     .queue-item { background: #fffcf9; margin-bottom: 12px; padding: 16px; border-radius: 12px; border-left: 6px solid #b08d79; box-shadow: 0 2px 5px rgba(110, 90, 75, 0.05); border-top: 1px solid #f0e6df; border-right: 1px solid #f0e6df; border-bottom: 1px solid #f0e6df; transition: 0.3s;}
     .queue-done { opacity: 0.5; border-left: 6px solid #85a38b; text-decoration: line-through; background: #f0f5f1; }
     .export-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f4ede6; padding: 15px 18px; border-radius: 12px; border: 2px solid #e2d3c7; }
 
-    /* 奶茶色專屬自訂數字鍵盤彈窗 */
+    /* 奶茶色超大專屬自訂數字鍵盤彈窗 */
     #numpadOverlay {
       display: none;
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(74, 64, 59, 0.4);
+      background: rgba(74, 64, 59, 0.5);
       z-index: 999;
       justify-content: center;
       align-items: center;
     }
     .numpad-box {
       background: #fffcf9;
-      padding: 24px;
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(110, 90, 75, 0.2);
-      border: 2px solid #e2d3c7;
-      width: 340px;
+      padding: 35px;
+      border-radius: 24px;
+      box-shadow: 0 15px 40px rgba(110, 90, 75, 0.25);
+      border: 3px solid #e2d3c7;
+      width: 520px; /* 變超寬大 */
     }
     .numpad-display {
-      font-size: 2rem;
+      font-size: 3.2rem;
       text-align: right;
       background: #f4ede6;
-      padding: 12px 18px;
-      border-radius: 10px;
-      margin-bottom: 18px;
+      padding: 18px 24px;
+      border-radius: 14px;
+      margin-bottom: 25px;
       color: #a65d37;
       font-weight: bold;
       border: 2px solid #d2c2b4;
@@ -114,22 +115,22 @@
     .numpad-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 16px;
     }
     .num-btn {
       background: #f4eae1;
-      border: 2px solid #dfc7b5;
+      border: 3px solid #dfc7b5;
       color: #5c4b42;
-      font-size: 1.6rem;
-      padding: 18px 0;
-      border-radius: 12px;
+      font-size: 2.8rem; /* 數字超大 */
+      padding: 28px 0; /* 按鈕超高好按 */
+      border-radius: 16px;
       cursor: pointer;
       font-weight: bold;
       transition: 0.1s;
     }
     .num-btn:active { background: #e6d5c5; transform: scale(0.95); }
-    .num-btn-action { background: #e2d3c7; color: #4a403b; }
-    .num-btn-ok { background: #9c7b66; color: white; border-color: #8c6a56; grid-column: span 3; }
+    .num-btn-action { background: #e2d3c7; color: #4a403b; font-size: 2.4rem; }
+    .num-btn-ok { background: #9c7b66; color: white; border-color: #8c6a56; grid-column: span 3; font-size: 2.8rem; padding: 25px 0; }
   </style>
 </head>
 <body>
@@ -138,7 +139,7 @@
   <div class="panel" id="menuPanel">
     <div>
       <h1 id="brandTitle" onclick="checkUnlock()">☕ 蕎淶清飲 POS</h1>
-      <span style="font-size: 1rem; color: #8c7a6b;">(連續點擊標題 5 下解鎖價格修改)</span>
+      <span style="font-size: 1.1rem; color: #8c7a6b;">(連續點擊標題 5 下解鎖價格修改)</span>
     </div>
     
     <h2>🍕 比薩</h2>
@@ -155,31 +156,31 @@
   <div class="panel">
     <h2>🛒 購物車</h2>
     <div style="flex: 1; overflow-y: auto;" id="cartList">
-      <p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.3rem;">尚未選擇商品</p>
+      <p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.4rem;">尚未選擇商品</p>
     </div>
     
     <div class="checkout-zone">
       <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-        <span style="font-size: 1.2rem; font-weight: bold; color: #7c685b;">🏷️ 比薩+飲料套組折扣</span>
-        <span style="font-size: 1.1rem; color: #a65d37; font-weight: bold;" id="comboHint">未達比薩+飲料組合</span>
+        <span style="font-size: 1.3rem; font-weight: bold; color: #7c685b;">🏷️ 比薩+飲料套組折扣</span>
+        <span style="font-size: 1.2rem; color: #a65d37; font-weight: bold;" id="comboHint">未達比薩+飲料組合</span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-        <span style="font-size: 1.3rem;">總計金額:</span>
+        <span style="font-size: 1.4rem;">總計金額:</span>
         <span class="total-price">$<span id="totalAmount">0</span></span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-        <span style="font-size: 1.3rem;">客收現金:</span>
+        <span style="font-size: 1.4rem;">客收現金:</span>
         <div style="display: flex; gap: 10px; align-items: center;">
-          <!-- 設定 readonly 防止平板原生鍵盤彈出 -->
+          <!-- readonly 防止平板原生鍵盤彈出 -->
           <input type="text" id="cashGiven" placeholder="點擊輸入" readonly onclick="openNumpad()">
-          <button class="btn" style="background: #85a38b; color: white; padding: 12px 18px; font-size: 1.2rem;" onclick="setExactCash()">⚡ 不找零</button>
+          <button class="btn" style="background: #85a38b; color: white; padding: 14px 20px; font-size: 1.3rem;" onclick="setExactCash()">⚡ 不找零</button>
         </div>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 18px; font-weight: bold; align-items: center;">
-        <span style="font-size: 1.3rem;">找零:</span>
-        <span id="changeAmount" style="color: #6b8c73; font-size: 1.7rem;">$0</span>
+        <span style="font-size: 1.4rem;">找零:</span>
+        <span id="changeAmount" style="color: #6b8c73; font-size: 1.9rem;">$0</span>
       </div>
-      <button class="btn" style="background: #9c7b66; color: white; width: 100%; padding: 16px; font-size: 1.4rem;" onclick="checkout()">確認結帳並送單</button>
+      <button class="btn" style="background: #9c7b66; color: white; width: 100%; padding: 18px; font-size: 1.6rem;" onclick="checkout()">確認結帳並送單</button>
     </div>
   </div>
 
@@ -187,25 +188,25 @@
   <div class="panel">
     <div class="export-bar">
       <div>
-        <div style="font-weight: bold; color: #5c4b42; font-size: 1.2rem;">📊 營運統計與匯出</div>
-        <div style="font-size: 1.05rem; color: #7c685b; margin-top: 4px;" id="dailyStatsHint">今日營業額: $0 | 總單數: 0 單</div>
+        <div style="font-weight: bold; color: #5c4b42; font-size: 1.3rem;">📊 營運統計與匯出</div>
+        <div style="font-size: 1.15rem; color: #7c685b; margin-top: 4px;" id="dailyStatsHint">今日營業額: $0 | 總單數: 0 單</div>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button class="btn" style="background: #879ab0; color: white; padding: 10px 14px; font-size: 1.1rem;" onclick="exportExcel()">匯出 Excel</button>
-        <button class="btn" style="background: #b87b76; color: white; padding: 10px 14px; font-size: 1.1rem;" onclick="clearHistory()">清空歷史</button>
+        <button class="btn" style="background: #879ab0; color: white; padding: 12px 16px; font-size: 1.2rem;" onclick="exportExcel()">匯出 Excel</button>
+        <button class="btn" style="background: #b87b76; color: white; padding: 12px 16px; font-size: 1.2rem;" onclick="clearHistory()">清空歷史</button>
       </div>
     </div>
 
     <h2>📋 即時訂單列隊</h2>
     <div style="flex: 1; overflow-y: auto;" id="queueList">
-      <p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.3rem;">目前尚無訂單</p>
+      <p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.4rem;">目前尚無訂單</p>
     </div>
   </div>
 
-  <!-- 奶茶色自訂數字鍵盤彈窗 -->
+  <!-- 奶茶色超大自訂數字鍵盤彈窗 -->
   <div id="numpadOverlay" onclick="closeNumpadBg(event)">
     <div class="numpad-box">
-      <div style="font-weight: bold; margin-bottom: 8px; color: #6d5d53; font-size: 1.2rem;">⌨️ 輸入客收現金金額</div>
+      <div style="font-weight: bold; margin-bottom: 12px; color: #6d5d53; font-size: 1.5rem; text-align: center;">⌨️ 請輸入客收現金金額</div>
       <div class="numpad-display" id="numpadVal">0</div>
       <div class="numpad-grid">
         <button class="num-btn" onclick="numPress('7')">7</button>
@@ -220,7 +221,7 @@
         <button class="num-btn num-btn-action" onclick="numPress('0')">0</button>
         <button class="num-btn num-btn-action" onclick="numDelete()">⌫</button>
         <button class="num-btn num-btn-action" onclick="numClear()">清除</button>
-        <button class="num-btn num-btn-ok" onclick="confirmNumpad()">確定</button>
+        <button class="num-btn num-btn-ok" onclick="confirmNumpad()">確定輸入</button>
       </div>
     </div>
   </div>
@@ -258,7 +259,7 @@
       localStorage.setItem('qiaolai_menuData', JSON.stringify(menuData));
     }
 
-    // 數位鍵盤控制函式
+    // 數字鍵盤控制函式
     function openNumpad() {
       const current = document.getElementById("cashGiven").value;
       tempNumpadStr = current === "" ? "0" : current;
@@ -305,7 +306,7 @@
           wrap.className = "menu-item-wrap";
           wrap.innerHTML = `
             <button class="btn btn-${category}" onclick="addToCart('${item.name}', ${item.price}, '${item.type}')">
-              ${item.name} <span class="price-text">$${item.price}</span>
+              ${item.name} <span class="price-text" style="font-size: 1.8rem; margin-left: 6px;">$${item.price}</span>
             </button>
             <input type="number" class="price-input" value="${item.price}" id="price_${item.name}" onchange="updatePrice('${item.name}', '${category}', this.value)">
           `;
@@ -386,7 +387,7 @@
 
       const keys = Object.keys(cart);
       if (keys.length === 0) {
-        container.innerHTML = `<p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.3rem;">尚未選擇商品</p>`;
+        container.innerHTML = `<p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.4rem;">尚未選擇商品</p>`;
         document.getElementById("totalAmount").innerText = "0";
         document.getElementById("changeAmount").innerText = "$0";
         document.getElementById("comboHint").innerText = "未達比薩+飲料組合";
@@ -399,13 +400,13 @@
         div.className = "cart-item";
         div.innerHTML = `
           <div style="flex: 1;">
-            <div style="font-weight: bold; font-size: 1.3rem;">${name}</div>
-            <div style="font-size: 1.1rem; color: #8c7a6b; margin-top: 4px;">$${item.price} × ${item.qty} = $${item.price * item.qty}</div>
+            <div style="font-weight: bold; font-size: 1.4rem;">${name}</div>
+            <div style="font-size: 1.2rem; color: #8c7a6b; margin-top: 4px;">$${item.price} × ${item.qty} = $${item.price * item.qty}</div>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="btn" style="padding: 8px 16px; background: #e8dfd8; font-size: 1.3rem;" onclick="changeQty('${name}', -1)">-</button>
-            <span style="font-weight: bold; width: 40px; text-align: center; font-size: 1.4rem;">${item.qty}</span>
-            <button class="btn" style="padding: 8px 16px; background: #e8dfd8; font-size: 1.3rem;" onclick="changeQty('${name}', 1)">+</button>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn" style="padding: 10px 18px; background: #e8dfd8; font-size: 1.5rem;" onclick="changeQty('${name}', -1)">-</button>
+            <span style="font-weight: bold; width: 40px; text-align: center; font-size: 1.6rem;">${item.qty}</span>
+            <button class="btn" style="padding: 10px 18px; background: #e8dfd8; font-size: 1.5rem;" onclick="changeQty('${name}', 1)">+</button>
           </div>
         `;
         container.appendChild(div);
@@ -484,7 +485,7 @@
     function renderQueue() {
       const container = document.getElementById("queueList");
       if (orderHistory.length === 0) {
-        container.innerHTML = `<p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.3rem;">目前尚無訂單</p>`;
+        container.innerHTML = `<p style="color: #a39283; text-align: center; margin-top: 60px; font-size: 1.4rem;">目前尚無訂單</p>`;
         return;
       }
 
@@ -497,12 +498,12 @@
 
         div.innerHTML = `
           <div>
-            <div style="font-weight: bold; font-size: 1.2rem; color: #5c4b42;">#${order.id} 訂單 (${order.time})</div>
-            <div style="font-size: 1.1rem; color: #7c685b; margin: 6px 0;">${itemsDesc}</div>
-            <div style="font-size: 1.2rem; color: #a65d37; font-weight: bold;">總計: $${order.total}</div>
+            <div style="font-weight: bold; font-size: 1.3rem; color: #5c4b42;">#${order.id} 訂單 (${order.time})</div>
+            <div style="font-size: 1.2rem; color: #7c685b; margin: 6px 0;">${itemsDesc}</div>
+            <div style="font-size: 1.3rem; color: #a65d37; font-weight: bold;">總計: $${order.total}</div>
           </div>
           <div>
-            <button class="btn" style="background: ${order.status === 'done' ? '#a39283' : '#85a38b'}; color: white; padding: 10px 16px; font-size: 1.1rem;" onclick="toggleOrderStatus(${order.id})">
+            <button class="btn" style="background: ${order.status === 'done' ? '#a39283' : '#85a38b'}; color: white; padding: 12px 18px; font-size: 1.2rem;" onclick="toggleOrderStatus(${order.id})">
               ${order.status === 'done' ? '已完成' : '完成'}
             </button>
           </div>
